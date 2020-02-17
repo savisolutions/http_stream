@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup elixir
+        uses: actions/setup-elixir@v1
+        with:
+          elixir-version: 1.10.x
+          otp-version: 22.2
+      - uses: actions/cache@v1
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-mix-
+      - uses: actions/cache@v1
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+      - uses: actions/cache@v1
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-plts-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-plts-
+      - name: Install Dependencies
+        run: mix deps.get
+      - name: Run Tests
+        run: mix test
+      - name: Run Credo
+        run: MIX_ENV=dev mix credo list --strict --format=oneline
+      - name: Run Coveralls
+        run: MIX_ENV=test mix coveralls
+      - name: Run Dialyzer
+        run: MIX_ENV=dev mix dialyzer

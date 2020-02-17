@@ -1,0 +1,2 @@
+defmodule HTTPStreamTest do
+end
