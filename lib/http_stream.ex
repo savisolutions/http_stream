@@ -15,7 +15,6 @@ defmodule HTTPStream do
       [chunk, ...]
 
   """
-
   @spec get(String.t()) :: Enumerable.t()
   def get(url) do
     Stream.resource(
@@ -55,4 +54,41 @@ defmodule HTTPStream do
       {:done, ^ref} -> {body, {conn, ref, :halt}}
     end
   end
+
+  @doc """
+  Chunks incoming stream by new lines. Useful for csv files.
+
+  ## Examples
+
+      iex> chunk_by_lines(enum)
+      [chunk, ...]
+
+  """
+  @spec chunk_by_lines(Enumerable.t()) :: Enumerable.t()
+  def chunk_by_lines(enum), do: chunk_by_lines(enum, :string_split)
+  def chunk_by_lines(enum, :next_lines), do: Stream.transform(enum, "", &next_lines/2)
+
+  def chunk_by_lines(enum, :string_split) do
+    Stream.transform(enum, "", fn
+      :end, acc ->
+        {[acc], ""}
+
+      chunk, acc ->
+        [last_line | lines] = (acc <> chunk) |> String.split("\n") |> Enum.reverse()
+        {Enum.reverse(lines), last_line}
+    end)
+  end
+
+  defp next_lines(:end, prev), do: {[prev], ""}
+  defp next_lines(chunk, current_line), do: next_lines(chunk, current_line, [])
+
+  defp next_lines(<<"\n"::utf8, rest::binary>>, current_line, lines) do
+    next_lines(rest, "", [<<current_line::binary, "\n"::utf8>> | lines])
+  end
+
+  defp next_lines(<<c::utf8, rest::binary>>, current_line, lines) do
+    next_lines(rest, <<current_line::binary, c::utf8>>, lines)
+  end
+
+  defp next_lines(<<>>, current_line, lines), do: {Enum.reverse(lines), current_line}
 end
