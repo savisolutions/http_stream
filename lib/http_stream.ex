@@ -39,8 +39,9 @@ defmodule HTTPStream do
         {conn, ref, :halt} ->
           {:halt, {conn, ref}}
       end,
-      fn {conn, _ref} ->
-        Mint.HTTP.close(conn)
+      fn
+        {conn, _ref} -> Mint.HTTP.close(conn)
+        {conn, _ref, :halt} -> Mint.HTTP.close(conn)
       end
     )
   end
@@ -74,7 +75,9 @@ defmodule HTTPStream do
         {[acc], ""}
 
       chunk, acc ->
-        [last_line | lines] = (acc <> chunk) |> String.split("\n") |> Enum.reverse()
+        [last_line | lines] =
+          (acc <> chunk) |> String.replace("\r\n", "\n") |> String.split("\n") |> Enum.reverse()
+
         {Enum.reverse(lines), last_line}
     end)
   end
